@@ -1,0 +1,4 @@
+libx.so:
+  libyz.so: libxz.so
+liby.so:
+  libxz.so: libyz.so
