@@ -3,18 +3,33 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <link.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <yaml.h>
 
-int frog_initialized;
+int	frog_initialized;
+int	croak_aloud;
 
 yaml_document_t	config;
 yaml_node_t	*root;
 
 char	*last_search;
 char	**objects;
+
+__attribute__((format(printf, 1, 2)))
+static void	croak(const char *format, ...)
+{
+	if (croak_aloud)
+	{
+		va_list	args;
+
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+	}
+}
 
 static void	parse_configuration(FILE *config_file)
 {
@@ -40,7 +55,7 @@ static void	parse_configuration(FILE *config_file)
 
 					if (YAML_SCALAR_NODE != key->type)
 					{
-						printf("All keys in root mapping must be scalar.\n");
+						croak("All keys in root mapping must be scalar.\n");
 						break;
 					}
 
@@ -48,7 +63,7 @@ static void	parse_configuration(FILE *config_file)
 
 					if (YAML_MAPPING_NODE != value->type)
 					{
-						printf("All values in root mapping must be mappings themselves.\n");
+						croak("All values in root mapping must be mappings themselves.\n");
 						break;
 					}
 
@@ -63,7 +78,7 @@ static void	parse_configuration(FILE *config_file)
 						if (YAML_SCALAR_NODE != nested_key->type ||
 								YAML_SCALAR_NODE != nested_value->type)
 						{
-							printf("All keys and values in nested mapping must be scalar.\n");
+							croak("All keys and values in nested mapping must be scalar.\n");
 							break;
 						}
 					}
@@ -74,18 +89,18 @@ static void	parse_configuration(FILE *config_file)
 
 				if (pair == root->data.mapping.pairs.top)
 				{
-					printf("Configuration file has been successfully parsed.\n");
+					croak("Configuration file has been successfully parsed.\n");
 					frog_initialized = 1;
 				}
 			}
 			else
-				printf("Root node must be a mapping.\n");
+				croak("Root node must be a mapping.\n");
 		}
 		else
-			printf("There are no YAML documents in the configuration file.\n");
+			croak("There are no YAML documents in the configuration file.\n");
 	}
 	else
-		printf("Cannot parse configuration file. Please check if it is a valid YAML file.\n");
+		croak("Cannot parse configuration file. Please check if it is a valid YAML file.\n");
 
 	yaml_parser_delete(&parser);
 }
@@ -93,27 +108,30 @@ static void	parse_configuration(FILE *config_file)
 __attribute__((constructor))
 static void	frog_initialize(void)
 {
+	const char	frog_verbose[] = "LIBFROG_VERBOSE";
 	const char	frog_config[] = "LIBFROG_CONFIG", *config_file_name;
 	FILE		*config_file;
 
-	printf("Initializing libfrog...\n");
+	croak_aloud = NULL != secure_getenv(frog_verbose);
+
+	croak("Initializing libfrog...\n");
 
 	if (NULL != (config_file_name = secure_getenv(frog_config)))
 	{
-		printf("Reading configuration from \"%s\"...\n", config_file_name);
+		croak("Reading configuration from \"%s\"...\n", config_file_name);
 
 		if (NULL != (config_file = fopen(config_file_name, "r")))
 		{
 			parse_configuration(config_file);
 
 			if (0 != fclose(config_file))
-				printf("Failure to close \"%s\": %s.\n", config_file_name, strerror(errno));
+				croak("Failure to close \"%s\": %s.\n", config_file_name, strerror(errno));
 		}
 		else
-			printf("Failure to open \"%s\": %s.\n", config_file_name, strerror(errno));
+			croak("Failure to open \"%s\": %s.\n", config_file_name, strerror(errno));
 	}
 	else
-		printf("Path to configuration file must be set using \"%s\" environment variable.\n", frog_config);
+		croak("Path to configuration file must be set using \"%s\" environment variable.\n", frog_config);
 }
 
 __attribute__((destructor))
@@ -136,7 +154,7 @@ unsigned int	la_version(unsigned int version)
 
 char	*la_objsearch(const char *name, uintptr_t *cookie, unsigned int flag)
 {
-	printf("Searching %s\n", name);
+	croak("Searching %s\n", name);
 	free(last_search);
 	last_search = strdup(name);
 	return name;
@@ -190,7 +208,7 @@ unsigned int	la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie)
 			}
 		}
 
-		printf("Will%s audit references %s %s.\n",
+		croak("Will%s audit references %s %s.\n",
 				audit ? "" : " not",
 				audit & LA_FLG_BINDTO ?
 						audit & LA_FLG_BINDFROM ? "to and from" : "to" :
@@ -219,7 +237,7 @@ uintptr_t	la_symbind64(Elf64_Sym *sym, unsigned int ndx, uintptr_t *refcook, uin
 
 	def_len = strlen(def_name);
 
-	printf("Binding %s referenced from %s and defined in %s\n", symname, ref_name, def_name);
+	croak("Binding %s referenced from %s and defined in %s\n", symname, ref_name, def_name);
 
 	for (pair = root->data.mapping.pairs.start; pair < root->data.mapping.pairs.top; pair++)
 	{
@@ -251,19 +269,19 @@ uintptr_t	la_symbind64(Elf64_Sym *sym, unsigned int ndx, uintptr_t *refcook, uin
 					char			lib_name[1000] = {0};
 					void			*lib, *symbol;
 
-					printf("%s (%u) referenced from object %p (%s) is incorrectly bound"
+					croak("%s (%u) referenced from object %p (%s) is incorrectly bound"
 							" to address %p from object %p (%s)\n",
 							symname, ndx, *refcook, objects[*refcook],
 							sym->st_value, *defcook, objects[*defcook]);
-					printf("This binding has to be fixed!\n");
+					croak("This binding has to be fixed!\n");
 
 					nested_value = yaml_document_get_node(&config, nested_pair->value);
 					memcpy(lib_name, nested_value->data.scalar.value, nested_value->data.scalar.length);
 
 					if (NULL == (lib = dlmopen(LM_ID_BASE, lib_name, RTLD_NOW | RTLD_NOLOAD)))
-						printf("dlmopen() failed: %s.\n", strerror(errno));
+						croak("dlmopen() failed: %s.\n", strerror(errno));
 					else if (NULL == (symbol = dlsym(lib, symname)))
-						printf("dlsym() failed: %s.\n", strerror(errno));
+						croak("dlsym() failed: %s.\n", strerror(errno));
 					else
 						return symbol;
 				}
