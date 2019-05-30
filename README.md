@@ -25,7 +25,7 @@ The issue is trivial to remedy if we have access to the sources of these librari
 
 This project uses
 [auditing API for the dynamic linker](http://man7.org/linux/man-pages/man7/rtld-audit.7.html)
-to fix incorrect symbol bindings on **without any changes** to the binaries.
+to fix incorrect symbol bindings **without any changes** to the binaries.
 All you need to do is to find out which libraries get incorrectly linked and specify them in [YAML](http://yaml.org) configuration file.
 ```yaml
 libx.so:
@@ -78,6 +78,7 @@ $ cc y.c -L. -lyz -fPIC -shared -o liby.so
 ```
 
 And here is an example of how they can be used one by one.
+
 [test-x.c](demo/test-x.c):
 ```
 $ LD_LIBRARY_PATH=. cc test-x.c -L. -lx -o test-x
