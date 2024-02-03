@@ -31,7 +31,7 @@ jobs:
       run: scip-clang --compdb-path=./compile_commands.json
     - name: Download Sourcegraph CLI
       run: >-
-        curl -L https://sourcegraph.example.com/.api/src-cli/src_linux_amd64 -o /usr/local/bin/src &&
+        curl -L https://sourcegraph.com/.api/src-cli/src_linux_amd64 -o /usr/local/bin/src &&
         chmod +x /usr/local/bin/src
     - name: Upload index
       run: src code-intel upload -file=index.scip -github-token=${{ secrets.GITHUB_TOKEN }}
