@@ -1,0 +1,37 @@
+on:
+  push:
+    branches:
+    - master
+jobs:
+  sourcegraph:
+    # prevent forks from uploading indexes
+    if: github.repository == "i-ky/libfrog"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Generate compilation database
+      run: |
+        cat > compile_commands.json << EOF
+        [
+          {
+            "directory": "$PWD",
+            "command": "cc -shared -fPIC frog.c -o libfrog.so -ldl -lyaml",
+            "file": "frog.c"
+          }
+        ]
+        EOF
+    - name: Download indexer
+      run: >-
+        TAG=v0.3.1
+        OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        RELEASE_URL="https://github.com/sourcegraph/scip-clang/releases/download/$TAG"
+        curl -L "$RELEASE_URL/scip-clang-x86_64-$OS" -o /usr/local/bin/scip-clang &&
+        chmod +x /usr/local/bin/scip-clang
+    - name: Generate index
+      run: ./scip-clang --compdb-path=./compile_commands.json
+    - name: Download Sourcegraph CLI
+      run: >-
+        curl -L https://sourcegraph.example.com/.api/src-cli/src_linux_amd64 -o /usr/local/bin/src &&
+        chmod +x /usr/local/bin/src
+    - name: Upload index
+      run: src code-intel upload -file=index.scip -github-token=${{ secrets.GITHUB_TOKEN }}
