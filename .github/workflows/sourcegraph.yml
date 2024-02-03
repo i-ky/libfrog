@@ -5,7 +5,7 @@ on:
 jobs:
   sourcegraph:
     # prevent forks from uploading indexes
-    if: github.repository == "i-ky/libfrog"
+    if: github.repository == 'i-ky/libfrog'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
