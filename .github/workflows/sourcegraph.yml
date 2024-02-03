@@ -28,7 +28,7 @@ jobs:
         bash -c 'curl -L "$RELEASE_URL/scip-clang-x86_64-$OS" -o /usr/local/bin/scip-clang' &&
         chmod +x /usr/local/bin/scip-clang
     - name: Generate index
-      run: ./scip-clang --compdb-path=./compile_commands.json
+      run: scip-clang --compdb-path=./compile_commands.json
     - name: Download Sourcegraph CLI
       run: >-
         curl -L https://sourcegraph.example.com/.api/src-cli/src_linux_amd64 -o /usr/local/bin/src &&
