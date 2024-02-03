@@ -25,7 +25,7 @@ jobs:
         TAG=v0.3.1
         OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
         RELEASE_URL="https://github.com/sourcegraph/scip-clang/releases/download/$TAG"
-        curl -L "$RELEASE_URL/scip-clang-x86_64-$OS" -o /usr/local/bin/scip-clang &&
+        bash -c 'curl -L "$RELEASE_URL/scip-clang-x86_64-$OS" -o /usr/local/bin/scip-clang' &&
         chmod +x /usr/local/bin/scip-clang
     - name: Generate index
       run: ./scip-clang --compdb-path=./compile_commands.json
